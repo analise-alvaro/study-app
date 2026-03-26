@@ -1,0 +1,33 @@
+<svg width="200" height="220" viewBox="0 0 200 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  
+  <!-- Relógio externo -->
+  <circle cx="100" cy="90" r="70" fill="#28a745"/>
+
+  <!-- Fundo branco interno -->
+  <circle cx="100" cy="90" r="55" fill="#ffffff"/>
+
+  <!-- Segmento laranja (ciclo) -->
+  <path d="M100 35 A55 55 0 0 1 145 60 L100 90 Z" fill="#f59e0b"/>
+
+  <!-- Segmentos verdes -->
+  <path d="M145 60 A55 55 0 0 1 150 120 L100 90 Z" fill="#22c55e"/>
+  <path d="M150 120 A55 55 0 0 1 100 145 L100 90 Z" fill="#16a34a"/>
+
+  <!-- Ponteiro estilo check -->
+  <path d="M90 95 L105 110 L130 75" stroke="#15803d" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Sininho esquerdo -->
+  <circle cx="65" cy="30" r="12" fill="#28a745"/>
+  <!-- Sininho direito -->
+  <circle cx="135" cy="30" r="12" fill="#28a745"/>
+
+  <!-- Texto -->
+  <text x="100" y="185" text-anchor="middle" font-size="26" font-weight="700" fill="#374151">
+    BIZURADO
+  </text>
+
+  <text x="100" y="210" text-anchor="middle" font-size="18" font-weight="700" fill="#22c55e">
+    APP
+  </text>
+
+</svg>
