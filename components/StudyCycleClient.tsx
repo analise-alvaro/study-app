@@ -21,22 +21,36 @@ type StudyColor = {
   hex_value: string
 }
 
+type StudyColorRelation =
+  | {
+      id: number
+      name: string
+      hex_value: string
+    }
+  | {
+      id: number
+      name: string
+      hex_value: string
+    }[]
+  | null
+
 type CycleItem = {
   id: number
   discipline: string
   position: number
   study_color_id: number | null
-  study_colors: {
-    id: number
-    name: string
-    hex_value: string
-  }[] | null
+  study_colors: StudyColorRelation
 }
 
 type Props = {
   initialCycles: CycleItem[]
   colors: StudyColor[]
   userId: string
+}
+
+function getStudyColor(studyColors: StudyColorRelation) {
+  if (!studyColors) return null
+  return Array.isArray(studyColors) ? studyColors[0] ?? null : studyColors
 }
 
 export default function StudyCycleClient({
@@ -225,7 +239,8 @@ export default function StudyCycleClient({
             Organize suas disciplinas
           </h1>
           <p className="mt-2 text-sm text-slate-500">
-            Defina a ordem do seu ciclo e associe uma cor para facilitar a visualização.
+            Defina a ordem do seu ciclo e associe uma cor para facilitar a
+            visualização.
           </p>
         </div>
 
@@ -247,7 +262,7 @@ export default function StudyCycleClient({
       )}
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <section className=" bg-emerald-100/85 p-5 shadow-[0_18px_40px_rgba(16,185,129,0.14)]">
+        <section className="bg-emerald-100/85 p-5 shadow-[0_18px_40px_rgba(16,185,129,0.14)]">
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-white/70 p-3 text-[#04aa6d] shadow-sm">
               <Plus className="h-5 w-5" />
@@ -347,7 +362,9 @@ export default function StudyCycleClient({
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Disciplinas do ciclo</h2>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Disciplinas do ciclo
+              </h2>
               <p className="text-sm text-slate-500">
                 Edite, reorganize ou exclua suas disciplinas.
               </p>
@@ -362,11 +379,12 @@ export default function StudyCycleClient({
             <div className="grid gap-4">
               {initialCycles.map((item) => {
                 const isEditing = editingId === item.id
+                const resolvedColor = getStudyColor(item.study_colors)
 
                 return (
                   <div
                     key={item.id}
-                    className=" p-4 shadow-[0_14px_36px_rgba(15,23,42,0.08)] backdrop-blur-sm"
+                    className="p-4 shadow-[0_14px_36px_rgba(15,23,42,0.08)] backdrop-blur-sm"
                   >
                     {isEditing ? (
                       <div className="grid gap-4">
@@ -445,9 +463,10 @@ export default function StudyCycleClient({
                         <div className="flex items-start gap-4">
                           <div
                             className="mt-1 h-5 w-5 rounded-full border border-slate-200 shadow-sm"
-style={{
-  backgroundColor: item.study_colors?.[0]?.hex_value ?? '#000000',
-}}
+                            style={{
+                              backgroundColor:
+                                resolvedColor?.hex_value ?? '#6B7280',
+                            }}
                           />
 
                           <div className="space-y-1">
@@ -457,7 +476,7 @@ style={{
                             <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
                               <span>Posição {item.position}</span>
                               <span>•</span>
-                              <span>{item.study_colors?.[0]?.name ?? 'Sem cor'}</span>
+                              <span>{resolvedColor?.name ?? 'Sem cor'}</span>
                             </div>
                           </div>
                         </div>
@@ -477,7 +496,9 @@ style={{
                             className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             <Trash2 className="h-4 w-4" />
-                            {deleteLoadingId === item.id ? 'Excluindo...' : 'Excluir'}
+                            {deleteLoadingId === item.id
+                              ? 'Excluindo...'
+                              : 'Excluir'}
                           </button>
                         </div>
                       </div>

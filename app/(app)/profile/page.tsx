@@ -1,14 +1,27 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
+type StudyColorRelation =
+  | {
+      name: string
+      hex_value: string
+    }
+  | {
+      name: string
+      hex_value: string
+    }[]
+  | null
+
 type CycleItem = {
   id: number
   discipline: string
   position: number
   study_color_id: number | null
-  study_colors: {
-    name: string
-    hex_value: string
-  }[] | null
+  study_colors: StudyColorRelation
+}
+
+function getStudyColor(studyColors: StudyColorRelation) {
+  if (!studyColors) return null
+  return Array.isArray(studyColors) ? studyColors[0] ?? null : studyColors
 }
 
 function buildDonutGradient(cycles: CycleItem[]) {
@@ -24,7 +37,7 @@ function buildDonutGradient(cycles: CycleItem[]) {
     const end = currentDeg + sliceSize
     currentDeg = end
 
-    const color = cycle.study_colors?.[0]?.hex_value || '#94a3b8'
+    const color = getStudyColor(cycle.study_colors)?.hex_value || '#94a3b8'
     return `${color} ${start}deg ${end}deg`
   })
 
@@ -59,7 +72,7 @@ export default async function ProfilePage() {
     .eq('user_id', user!.id)
     .order('position', { ascending: true })
 
-  const cycleList = (cycles || []) as CycleItem[]
+  const cycleList = (cycles || []) as unknown as CycleItem[]
   const donutBackground = buildDonutGradient(cycleList)
 
   return (
@@ -75,7 +88,7 @@ export default async function ProfilePage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-        <section className=" bg-white/85 p-6 shadow-[0_14px_36px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+        <section className="bg-white/85 p-6 shadow-[0_14px_36px_rgba(15,23,42,0.08)] backdrop-blur-sm">
           <h2 className="text-lg font-semibold text-slate-900">
             Dados do perfil
           </h2>
@@ -110,7 +123,7 @@ export default async function ProfilePage() {
           </div>
         </section>
 
-        <section className=" bg-emerald-100/85 p-6 shadow-[0_18px_40px_rgba(16,185,129,0.14)]">
+        <section className="bg-emerald-100/85 p-6 shadow-[0_18px_40px_rgba(16,185,129,0.14)]">
           <h2 className="text-lg font-semibold text-emerald-950">
             Ciclo de estudo
           </h2>
@@ -145,7 +158,8 @@ export default async function ProfilePage() {
 
               <div className="grid gap-3">
                 {cycleList.map((cycle) => {
-                  const color = cycle.study_colors?.[0]?.hex_value || '#94a3b8'
+                  const resolvedColor = getStudyColor(cycle.study_colors)
+                  const color = resolvedColor?.hex_value || '#94a3b8'
 
                   return (
                     <div
@@ -153,7 +167,7 @@ export default async function ProfilePage() {
                       className="flex items-center gap-3 rounded-2xl bg-white/75 px-4 py-3 shadow-sm"
                     >
                       <span
-                        className="h-4 w-4 border-white shadow-sm"
+                        className="h-4 w-4 rounded-full border border-white shadow-sm"
                         style={{ backgroundColor: color }}
                       />
                       <div className="min-w-0">
@@ -162,9 +176,7 @@ export default async function ProfilePage() {
                         </p>
                         <p className="text-xs text-slate-500">
                           Posição {cycle.position}
-{cycle.study_colors?.[0]?.name
-  ? ` • ${cycle.study_colors[0].name}`
-                            : ''}
+                          {resolvedColor?.name ? ` • ${resolvedColor.name}` : ''}
                         </p>
                       </div>
                     </div>
