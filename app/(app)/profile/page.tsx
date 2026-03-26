@@ -8,7 +8,7 @@ type CycleItem = {
   study_colors: {
     name: string
     hex_value: string
-  } | null
+  }[] | null
 }
 
 function buildDonutGradient(cycles: CycleItem[]) {
@@ -24,7 +24,7 @@ function buildDonutGradient(cycles: CycleItem[]) {
     const end = currentDeg + sliceSize
     currentDeg = end
 
-    const color = cycle.study_colors?.hex_value || '#94a3b8'
+    const color = cycle.study_colors?.[0]?.hex_value || '#94a3b8'
     return `${color} ${start}deg ${end}deg`
   })
 
@@ -145,7 +145,7 @@ export default async function ProfilePage() {
 
               <div className="grid gap-3">
                 {cycleList.map((cycle) => {
-                  const color = cycle.study_colors?.hex_value || '#94a3b8'
+                  const color = cycle.study_colors?.[0]?.hex_value || '#94a3b8'
 
                   return (
                     <div
@@ -162,8 +162,8 @@ export default async function ProfilePage() {
                         </p>
                         <p className="text-xs text-slate-500">
                           Posição {cycle.position}
-                          {cycle.study_colors?.name
-                            ? ` • ${cycle.study_colors.name}`
+{cycle.study_colors?.[0]?.name
+  ? ` • ${cycle.study_colors[0].name}`
                             : ''}
                         </p>
                       </div>

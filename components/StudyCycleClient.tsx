@@ -25,12 +25,12 @@ type CycleItem = {
   id: number
   discipline: string
   position: number
-  study_color_id: number
+  study_color_id: number | null
   study_colors: {
     id: number
     name: string
     hex_value: string
-  } | null
+  }[] | null
 }
 
 type Props = {
@@ -445,9 +445,9 @@ export default function StudyCycleClient({
                         <div className="flex items-start gap-4">
                           <div
                             className="mt-1 h-5 w-5 rounded-full border border-slate-200 shadow-sm"
-                            style={{
-                              backgroundColor: item.study_colors?.hex_value ?? '#000000',
-                            }}
+style={{
+  backgroundColor: item.study_colors?.[0]?.hex_value ?? '#000000',
+}}
                           />
 
                           <div className="space-y-1">
@@ -457,7 +457,7 @@ export default function StudyCycleClient({
                             <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
                               <span>Posição {item.position}</span>
                               <span>•</span>
-                              <span>{item.study_colors?.name ?? 'Sem cor'}</span>
+                              <span>{item.study_colors?.[0]?.name ?? 'Sem cor'}</span>
                             </div>
                           </div>
                         </div>

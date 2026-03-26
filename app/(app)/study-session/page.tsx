@@ -52,18 +52,18 @@ export default async function StudySessionPage() {
     effectiveCurrentCycleId = cycles[0].id
   }
 
-  const normalizedRecentSessions =
-    recentSessions?.map((session) => ({
-      id: session.id,
-      created_at: session.created_at,
-      duration_seconds: session.duration_seconds,
-      discipline: Array.isArray(session.cycles)
-        ? session.cycles[0]?.discipline ?? 'Sem disciplina'
-        : session.cycles?.discipline ?? 'Sem disciplina',
-      study_method: Array.isArray(session.study_methods)
-        ? session.study_methods[0]?.name ?? 'Sem método'
-        : session.study_methods?.name ?? 'Sem método',
-    })) ?? []
+const normalizedRecentSessions =
+  recentSessions?.map((session) => ({
+    id: session.id,
+    created_at: session.created_at,
+    duration_seconds: session.duration_seconds,
+    discipline:
+      (session.cycles as { discipline: string }[] | null)?.[0]?.discipline ??
+      'Sem disciplina',
+    study_method:
+      (session.study_methods as { name: string }[] | null)?.[0]?.name ??
+      'Sem método',
+  })) ?? []
 
   return (
     <StudySessionClient
