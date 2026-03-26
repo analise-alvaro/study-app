@@ -131,6 +131,14 @@ export default function AppShell({ username, totalHours, children }: Props) {
                 <LogOut className="h-4 w-4 text-orange-400" />
                 <span>Sair</span>
               </button>
+
+              {/* ASSINATURA */}
+<div className="mt-auto border-t border-slate-700 px-4 py-4">
+  <p className="text-xs text-slate-500">Criado por</p>
+  <p className="mt-1 text-sm font-bold text-[#04aa6d]">
+    Alvaro Cavalcante
+  </p>
+</div>
             </nav>
           </div>
         </aside>
