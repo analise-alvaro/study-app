@@ -27,6 +27,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState<'success' | 'error' | ''>('')
+  const [registrationCompleted, setRegistrationCompleted] = useState(false)
 
   async function handleRegister(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -70,6 +71,7 @@ export default function RegisterPage() {
         'Cadastro realizado com sucesso. Verifique seu e-mail para confirmar a conta.'
       )
       setMessageType('success')
+      setRegistrationCompleted(true)
     }
 
     setLoading(false)
@@ -93,153 +95,207 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          <form onSubmit={handleRegister} className="mt-8 space-y-5">
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Nome
-              </label>
+          {registrationCompleted ? (
+            <div className="mt-8 space-y-5">
+              <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
+                <p className="text-sm font-semibold text-slate-500">
+                  Dados cadastrados
+                </p>
 
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 focus-within:border-[#04aa6d] focus-within:ring-2 focus-within:ring-emerald-100">
-                <User className="h-4 w-4 text-slate-400" />
-                <input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  required
-                  placeholder="Seu nome"
-                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                />
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                    <User className="h-4 w-4 text-[#04aa6d]" />
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">Nome</p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {name}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                    <Mail className="h-4 w-4 text-[#04aa6d]" />
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">E-mail</p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {email}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                E-mail
-              </label>
-
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 focus-within:border-[#04aa6d] focus-within:ring-2 focus-within:ring-emerald-100">
-                <Mail className="h-4 w-4 text-slate-400" />
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
-                  placeholder="seu@email.com"
-                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                />
+              <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+                <div>
+                  <p className="font-semibold">Cadastro realizado com sucesso.</p>
+                  <p className="mt-1">
+                    Enviamos um e-mail de confirmação para <strong>{email}</strong>.
+                    Verifique sua caixa de entrada e confirme o cadastro para
+                    acessar o sistema.
+                  </p>
+                </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => router.push('/login')}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#04aa6d] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#059862]"
+              >
+                Ir para o login
+              </button>
             </div>
+          ) : (
+            <>
+              <form onSubmit={handleRegister} className="mt-8 space-y-5">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    Nome
+                  </label>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Senha
-              </label>
+                  <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 focus-within:border-[#04aa6d] focus-within:ring-2 focus-within:ring-emerald-100">
+                    <User className="h-4 w-4 text-slate-400" />
+                    <input
+                      id="name"
+                      type="text"
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      required
+                      placeholder="Seu nome"
+                      className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                    />
+                  </div>
+                </div>
 
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 focus-within:border-[#04aa6d] focus-within:ring-2 focus-within:ring-emerald-100">
-                <Lock className="h-4 w-4 text-slate-400" />
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  required
-                  placeholder="••••••••"
-                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                />
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    E-mail
+                  </label>
+
+                  <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 focus-within:border-[#04aa6d] focus-within:ring-2 focus-within:ring-emerald-100">
+                    <Mail className="h-4 w-4 text-slate-400" />
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      required
+                      placeholder="seu@email.com"
+                      className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    Senha
+                  </label>
+
+                  <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 focus-within:border-[#04aa6d] focus-within:ring-2 focus-within:ring-emerald-100">
+                    <Lock className="h-4 w-4 text-slate-400" />
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      required
+                      placeholder="••••••••"
+                      className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="text-slate-400 transition hover:text-slate-600"
+                      aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    Confirmar senha
+                  </label>
+
+                  <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 focus-within:border-[#04aa6d] focus-within:ring-2 focus-within:ring-emerald-100">
+                    <Lock className="h-4 w-4 text-slate-400" />
+                    <input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      required
+                      placeholder="••••••••"
+                      className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      className="text-slate-400 transition hover:text-slate-600"
+                      aria-label={
+                        showConfirmPassword ? 'Ocultar senha' : 'Mostrar senha'
+                      }
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#04aa6d] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#059862] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Cadastrando...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="h-4 w-4" />
+                      Criar conta
+                    </>
+                  )}
+                </button>
 
                 <button
                   type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="text-slate-400 transition hover:text-slate-600"
-                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  onClick={() => router.push('/login')}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  Já tenho uma conta
                 </button>
-              </div>
-            </div>
+              </form>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Confirmar senha
-              </label>
-
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 focus-within:border-[#04aa6d] focus-within:ring-2 focus-within:ring-emerald-100">
-                <Lock className="h-4 w-4 text-slate-400" />
-                <input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                  required
-                  placeholder="••••••••"
-                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword((prev) => !prev)}
-                  className="text-slate-400 transition hover:text-slate-600"
-                  aria-label={
-                    showConfirmPassword ? 'Ocultar senha' : 'Mostrar senha'
-                  }
+              {message && (
+                <div
+                  className={`mt-6 flex items-start gap-3 rounded-2xl px-4 py-3 text-sm ${
+                    messageType === 'error'
+                      ? 'border border-red-200 bg-red-50 text-red-700'
+                      : 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+                  }`}
                 >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4" />
+                  {messageType === 'error' ? (
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                   ) : (
-                    <Eye className="h-4 w-4" />
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                   )}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#04aa6d] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#059862] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Cadastrando...
-                </>
-              ) : (
-                <>
-                  <UserPlus className="h-4 w-4" />
-                  Criar conta
-                </>
+                  <span>{message}</span>
+                </div>
               )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => router.push('/login')}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              Já tenho uma conta
-            </button>
-          </form>
-
-          {message && (
-            <div
-              className={`mt-6 flex items-start gap-3 rounded-2xl px-4 py-3 text-sm ${
-                messageType === 'error'
-                  ? 'border border-red-200 bg-red-50 text-red-700'
-                  : 'border border-emerald-200 bg-emerald-50 text-emerald-800'
-              }`}
-            >
-              {messageType === 'error' ? (
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              ) : (
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-              )}
-              <span>{message}</span>
-            </div>
+            </>
           )}
         </div>
       </div>
