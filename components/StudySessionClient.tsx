@@ -13,7 +13,6 @@ import {
   TimerReset,
   Trash2,
   History,
-  Target,
   CircleAlert,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
@@ -32,7 +31,11 @@ type StudyMethod = {
 type RecentSession = {
   id: number
   created_at: string
+  session_date: string
   duration_seconds: number
+  cycle_id: number | null
+  study_method_id: number | null
+  session_note: string
   discipline: string
   study_method: string
 }
@@ -45,6 +48,12 @@ type Props = {
   recentSessions: RecentSession[]
 }
 
+type MessageType = 'success' | 'error' | 'info'
+
+const STUDY_DURATION_STORAGE_KEY = 'study_duration_minutes'
+const DEFAULT_DURATION_MINUTES = 25
+const DEFAULT_DURATION_SECONDS = DEFAULT_DURATION_MINUTES * 60
+
 export default function StudySessionClient({
   userId,
   cycles,
@@ -53,9 +62,6 @@ export default function StudySessionClient({
   recentSessions,
 }: Props) {
   const router = useRouter()
-
-  const defaultDurationMinutes = 25
-  const defaultDurationSeconds = defaultDurationMinutes * 60
 
   const [selectedCycleId, setSelectedCycleId] = useState(() => {
     if (currentCycleId) return String(currentCycleId)
@@ -67,21 +73,34 @@ export default function StudySessionClient({
     studyMethods.length > 0 ? String(studyMethods[0].id) : ''
   )
 
-  const [durationInput, setDurationInput] = useState(String(defaultDurationMinutes))
-  const [configuredDuration, setConfiguredDuration] = useState(defaultDurationSeconds)
-  const [remainingSeconds, setRemainingSeconds] = useState(defaultDurationSeconds)
+  const [durationInput, setDurationInput] = useState(String(DEFAULT_DURATION_MINUTES))
+  const [configuredDuration, setConfiguredDuration] = useState(DEFAULT_DURATION_SECONDS)
+  const [remainingSeconds, setRemainingSeconds] = useState(DEFAULT_DURATION_SECONDS)
+  const [hasHydratedDuration, setHasHydratedDuration] = useState(false)
+
   const [isRunning, setIsRunning] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isAdvancingCycle, setIsAdvancingCycle] = useState(false)
   const [isSettingCurrentCycle, setIsSettingCurrentCycle] = useState(false)
+  const [effectiveCurrentCycleId, setEffectiveCurrentCycleId] = useState<number | null>(
+    currentCycleId
+  )
+  const [isReadyToSave, setIsReadyToSave] = useState(false)
+  const [sessionNote, setSessionNote] = useState('')
   const [message, setMessage] = useState('')
+  const [messageType, setMessageType] = useState<MessageType>('info')
+  const [savePromptMessage, setSavePromptMessage] = useState('')
+  const [savePromptType, setSavePromptType] = useState<MessageType>('info')
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
-  const hasSavedRef = useRef(false)
+  const hasCompletedRef = useRef(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const selectedCycle = cycles.find((cycle) => String(cycle.id) === selectedCycleId)
-  const currentCycle = cycles.find((cycle) => cycle.id === currentCycleId) ?? null
+  const currentCycle =
+    cycles.find((cycle) => cycle.id === effectiveCurrentCycleId) ?? null
+
+  const referenceCycleId = currentCycle?.id ?? cycles[0]?.id ?? null
 
   const isOutsideCurrentCycle =
     !!selectedCycle && !!currentCycle && selectedCycle.id !== currentCycle.id
@@ -99,22 +118,32 @@ export default function StudySessionClient({
   }, [configuredDuration, remainingSeconds])
 
   const filteredRecentSessions = useMemo(() => {
-    if (!currentCycle?.discipline) return []
+    if (!referenceCycleId) return []
 
     return [...recentSessions]
-      .filter((session) => session.discipline === currentCycle.discipline)
+      .filter((session) => session.cycle_id === referenceCycleId)
       .sort(
         (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          new Date(b.session_date).getTime() - new Date(a.session_date).getTime()
       )
       .slice(0, 5)
-  }, [recentSessions, currentCycle])
+  }, [recentSessions, referenceCycleId])
 
   function clearTimerInterval() {
     if (intervalRef.current) {
       clearInterval(intervalRef.current)
       intervalRef.current = null
     }
+  }
+
+  function setFeedback(text: string, type: MessageType = 'info') {
+    setMessage(text)
+    setMessageType(type)
+  }
+
+  function setSavePrompt(text: string, type: MessageType = 'info') {
+    setSavePromptMessage(text)
+    setSavePromptType(type)
   }
 
   function formatDuration(seconds: number) {
@@ -166,30 +195,44 @@ export default function StudySessionClient({
     const parsedMinutes = Number(durationInput)
 
     if (!parsedMinutes || parsedMinutes <= 0) {
-      setMessage('Informe uma duração válida em minutos.')
+      setFeedback('Informe uma duração válida em minutos.', 'error')
       return
     }
 
     const parsedDurationInSeconds = parsedMinutes * 60
 
+    localStorage.setItem(STUDY_DURATION_STORAGE_KEY, String(parsedMinutes))
+
     setConfiguredDuration(parsedDurationInSeconds)
     setRemainingSeconds(parsedDurationInSeconds)
-    hasSavedRef.current = false
-    setMessage(`Tempo configurado para ${parsedMinutes} minuto(s).`)
+    setIsReadyToSave(false)
+    hasCompletedRef.current = false
+    setSessionNote('')
+    setSavePrompt('', 'info')
+    setFeedback(`Tempo configurado para ${parsedMinutes} minuto(s).`, 'success')
   }
 
   function handleStart() {
     if (!selectedCycleId || !selectedMethodId) {
-      setMessage('Selecione uma disciplina e um método de estudo.')
+      setFeedback('Selecione uma disciplina e um método de estudo.', 'error')
+      return
+    }
+
+    if (isReadyToSave) {
+      setSavePrompt(
+        'A sessão terminou. Agora informe onde você parou e clique em salvar sessão.',
+        'info'
+      )
       return
     }
 
     if (remainingSeconds <= 0) {
-      setMessage('Clique em Aplicar ou Resetar antes de iniciar novamente.')
+      setFeedback('Clique em Aplicar ou Resetar antes de iniciar novamente.', 'error')
       return
     }
 
-    setMessage('')
+    setFeedback('', 'info')
+    setSavePrompt('', 'info')
     setIsRunning(true)
   }
 
@@ -200,22 +243,25 @@ export default function StudySessionClient({
   function handleReset() {
     setIsRunning(false)
     clearTimerInterval()
-    hasSavedRef.current = false
+    hasCompletedRef.current = false
+    setIsReadyToSave(false)
+    setSessionNote('')
+    setSavePrompt('', 'info')
     setRemainingSeconds(configuredDuration)
-    setMessage('Timer resetado.')
+    setFeedback('Timer resetado.', 'success')
   }
 
   async function handleAdvanceCycle() {
     if (cycles.length === 0) return
 
     setIsAdvancingCycle(true)
-    setMessage('')
+    setFeedback('', 'info')
 
     const activeCycle = currentCycle ?? cycles[0]
     const currentIndex = cycles.findIndex((cycle) => cycle.id === activeCycle.id)
 
     if (currentIndex === -1) {
-      setMessage('Não foi possível identificar a disciplina atual do ciclo.')
+      setFeedback('Não foi possível identificar a disciplina atual do ciclo.', 'error')
       setIsAdvancingCycle(false)
       return
     }
@@ -231,13 +277,14 @@ export default function StudySessionClient({
       .eq('id', userId)
 
     if (error) {
-      setMessage(`Erro ao avançar o ciclo: ${error.message}`)
+      setFeedback(`Erro ao avançar o ciclo: ${error.message}`, 'error')
       setIsAdvancingCycle(false)
       return
     }
 
     setSelectedCycleId(String(nextCycle.id))
-    setMessage(`Ciclo avançado para: ${nextCycle.discipline}`)
+    setEffectiveCurrentCycleId(nextCycle.id)
+    setFeedback(`Ciclo avançado para: ${nextCycle.discipline}`, 'success')
     setIsAdvancingCycle(false)
     router.refresh()
   }
@@ -246,7 +293,7 @@ export default function StudySessionClient({
     if (!selectedCycle) return
 
     setIsSettingCurrentCycle(true)
-    setMessage('')
+    setFeedback('', 'info')
 
     const { error } = await supabase
       .from('profiles')
@@ -256,12 +303,16 @@ export default function StudySessionClient({
       .eq('id', userId)
 
     if (error) {
-      setMessage(`Erro ao atualizar disciplina atual do ciclo: ${error.message}`)
+      setFeedback(`Erro ao atualizar disciplina atual do ciclo: ${error.message}`, 'error')
       setIsSettingCurrentCycle(false)
       return
     }
 
-    setMessage(`Disciplina atual do ciclo definida como: ${selectedCycle.discipline}`)
+    setEffectiveCurrentCycleId(selectedCycle.id)
+    setFeedback(
+      `Disciplina atual do ciclo definida como: ${selectedCycle.discipline}`,
+      'success'
+    )
     setIsSettingCurrentCycle(false)
     router.refresh()
   }
@@ -270,7 +321,7 @@ export default function StudySessionClient({
     const confirmed = confirm('Tem certeza que deseja excluir esta sessão?')
     if (!confirmed) return
 
-    setMessage('Excluindo sessão...')
+    setFeedback('Excluindo sessão...', 'info')
 
     const { error } = await supabase
       .from('study_sessions')
@@ -279,13 +330,71 @@ export default function StudySessionClient({
       .eq('user_id', userId)
 
     if (error) {
-      setMessage(`Erro ao excluir sessão: ${error.message}`)
+      setFeedback(`Erro ao excluir sessão: ${error.message}`, 'error')
       return
     }
 
-    setMessage('Sessão excluída com sucesso.')
+    setFeedback('Sessão excluída com sucesso.', 'success')
     router.refresh()
   }
+
+  async function handleSaveCompletedSession() {
+    if (!selectedCycleId || !selectedMethodId) {
+      setFeedback('Selecione uma disciplina e um método de estudo.', 'error')
+      return
+    }
+
+    if (!sessionNote.trim()) {
+      setSavePrompt(
+        'Sessão concluída. Escreva a observação antes de salvar a sessão.',
+        'error'
+      )
+      return
+    }
+
+    setIsSaving(true)
+    setSavePrompt('Salvando sessão...', 'info')
+
+    const { error } = await supabase.from('study_sessions').insert({
+      user_id: userId,
+      cycle_id: Number(selectedCycleId),
+      study_method_id: Number(selectedMethodId),
+      duration_seconds: configuredDuration,
+      session_note: sessionNote.trim(),
+    })
+
+    if (error) {
+      setSavePrompt(`Erro ao salvar sessão: ${error.message}`, 'error')
+      setIsSaving(false)
+      return
+    }
+
+    setIsSaving(false)
+    setIsReadyToSave(false)
+    setSessionNote('')
+    setSavePrompt('', 'info')
+    setFeedback('Sessão de estudo salva com sucesso.', 'success')
+    router.refresh()
+  }
+
+  useEffect(() => {
+    const savedDuration = localStorage.getItem(STUDY_DURATION_STORAGE_KEY)
+    const savedMinutes = Number(savedDuration)
+
+    if (savedDuration && Number.isFinite(savedMinutes) && savedMinutes > 0) {
+      const savedDurationInSeconds = savedMinutes * 60
+
+      setDurationInput(String(savedMinutes))
+      setConfiguredDuration(savedDurationInSeconds)
+      setRemainingSeconds(savedDurationInSeconds)
+    }
+
+    setHasHydratedDuration(true)
+  }, [])
+
+  useEffect(() => {
+    setEffectiveCurrentCycleId(currentCycleId)
+  }, [currentCycleId])
 
   useEffect(() => {
     if (!isRunning) {
@@ -308,13 +417,13 @@ export default function StudySessionClient({
   }, [isRunning])
 
   useEffect(() => {
-    async function saveStudySession() {
+    async function prepareCompletedSession() {
       if (remainingSeconds !== 0) return
-      if (hasSavedRef.current) return
+      if (hasCompletedRef.current) return
 
-      hasSavedRef.current = true
+      hasCompletedRef.current = true
       setIsRunning(false)
-      setIsSaving(true)
+      setIsReadyToSave(true)
 
       try {
         if (audioRef.current) {
@@ -325,30 +434,30 @@ export default function StudySessionClient({
         console.error('Não foi possível reproduzir o áudio:', error)
       }
 
-      setMessage('Timer finalizado. Salvando sessão...')
-
-      const { error } = await supabase.from('study_sessions').insert({
-        user_id: userId,
-        cycle_id: Number(selectedCycleId),
-        study_method_id: Number(selectedMethodId),
-        duration_seconds: configuredDuration,
-      })
-
-      if (error) {
-        setMessage(`Erro ao salvar sessão: ${error.message}`)
-        setIsSaving(false)
-        return
-      }
-
-      setMessage('Sessão de estudo salva com sucesso.')
-      setIsSaving(false)
-      router.refresh()
+      setSavePrompt(
+        'Sessão concluída. Agora informe onde você parou e clique em salvar sessão.',
+        'success'
+      )
     }
 
-    saveStudySession()
-  }, [remainingSeconds, configuredDuration, selectedCycleId, selectedMethodId, userId, router])
+    prepareCompletedSession()
+  }, [remainingSeconds])
 
   const disabledAction = isSaving || isAdvancingCycle || isSettingCurrentCycle
+
+  const messageStyles =
+    messageType === 'error'
+      ? 'border-red-200 bg-red-50 text-red-800'
+      : messageType === 'success'
+        ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+        : 'border-blue-200 bg-blue-50 text-blue-800'
+
+  const savePromptStyles =
+    savePromptType === 'error'
+      ? 'border-red-200 bg-red-50 text-red-800'
+      : savePromptType === 'success'
+        ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+        : 'border-blue-200 bg-blue-50 text-blue-800'
 
   return (
     <div className="space-y-8">
@@ -378,12 +487,14 @@ export default function StudySessionClient({
                 </p>
               </div>
 
-              <div className=" bg-white/85 px-4 py-3 shadow-[0_14px_36px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+              <div className="bg-white/85 px-4 py-3 shadow-[0_14px_36px_rgba(15,23,42,0.08)] backdrop-blur-sm">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Duração configurada
                 </p>
                 <p className="mt-1 text-sm font-bold text-slate-900">
-                  {formatConfiguredDuration(configuredDuration)}
+                  {formatConfiguredDuration(
+                    hasHydratedDuration ? configuredDuration : DEFAULT_DURATION_SECONDS
+                  )}
                 </p>
               </div>
             </div>
@@ -391,9 +502,8 @@ export default function StudySessionClient({
             <button
               type="button"
               onClick={handleAdvanceCycle}
-              disabled={isRunning || disabledAction}
-              //className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              className="inline-flex items-center gap-2 self-start rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 md:self-center"
+              disabled={isRunning || disabledAction || isReadyToSave}
+              className="inline-flex items-center gap-2 self-start rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 md:self-center disabled:cursor-not-allowed disabled:opacity-60"
             >
               <ArrowRight className="h-4 w-4 text-orange-500" />
               {isAdvancingCycle ? 'Avançando...' : 'Avançar para próxima disciplina'}
@@ -403,7 +513,9 @@ export default function StudySessionClient({
       </div>
 
       {message && (
-        <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-sm">
+        <div
+          className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm shadow-sm ${messageStyles}`}
+        >
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{message}</span>
         </div>
@@ -429,7 +541,7 @@ export default function StudySessionClient({
               <div className="flex items-center gap-3">
                 <div>
                   <p className="text-sm text-emerald-800/80">
-                    Escolha a disciplina, o método e o tempo da sessão.
+                    Escolha a disciplina, o método, o tempo e registre onde você parou.
                   </p>
                 </div>
               </div>
@@ -446,7 +558,7 @@ export default function StudySessionClient({
                     id="cycle"
                     value={selectedCycleId}
                     onChange={(event) => setSelectedCycleId(event.target.value)}
-                    disabled={isRunning || disabledAction}
+                    disabled={isRunning || disabledAction || isReadyToSave}
                     className="w-full rounded-2xl border border-emerald-300 bg-white/90 px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-[#04aa6d] focus:ring-2 focus:ring-emerald-200"
                   >
                     {cycles.map((cycle) => (
@@ -465,7 +577,7 @@ export default function StudySessionClient({
                       <button
                         type="button"
                         onClick={handleSetSelectedAsCurrentCycle}
-                        disabled={isRunning || disabledAction}
+                        disabled={isRunning || disabledAction || isReadyToSave}
                         className="mt-3 inline-flex items-center gap-2 rounded-xl border border-orange-300 bg-white px-4 py-2 text-sm font-medium text-orange-800 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <BookOpen className="h-4 w-4" />
@@ -488,7 +600,7 @@ export default function StudySessionClient({
                     id="method"
                     value={selectedMethodId}
                     onChange={(event) => setSelectedMethodId(event.target.value)}
-                    disabled={isRunning || disabledAction}
+                    disabled={isRunning || disabledAction || isReadyToSave}
                     className="w-full rounded-2xl border border-emerald-300 bg-white/90 px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-[#04aa6d] focus:ring-2 focus:ring-emerald-200"
                   >
                     {studyMethods.map((method) => (
@@ -514,14 +626,14 @@ export default function StudySessionClient({
                       min="1"
                       value={durationInput}
                       onChange={(event) => setDurationInput(event.target.value)}
-                      disabled={isRunning || disabledAction}
+                      disabled={isRunning || disabledAction || isReadyToSave}
                       className="w-full rounded-2xl border border-emerald-200 bg-white/80 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#04aa6d] focus:ring-2 focus:ring-emerald-100"
                     />
 
                     <button
                       type="button"
                       onClick={handleApplyDuration}
-                      disabled={isRunning || disabledAction}
+                      disabled={isRunning || disabledAction || isReadyToSave}
                       className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <TimerReset className="h-4 w-4 text-orange-300" />
@@ -532,7 +644,7 @@ export default function StudySessionClient({
               </div>
             </section>
 
-            <section className=" bg-orange-100/90 p-5 shadow-[0_18px_40px_rgba(251,146,60,0.18)]">
+            <section className="bg-orange-100/90 p-5 shadow-[0_18px_40px_rgba(251,146,60,0.18)]">
               <div className="text-center">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/70 text-orange-500 shadow-sm">
                   <Clock3 className="h-7 w-7" />
@@ -563,7 +675,49 @@ export default function StudySessionClient({
                   </p>
                 </div>
 
-                <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="mt-5 text-left">
+                  <label
+                    htmlFor="sessionNote"
+                    className="mb-2 block text-sm font-bold text-slate-900"
+                  >
+                    Observação da sessão
+                  </label>
+
+                  <textarea
+                    id="sessionNote"
+                    value={sessionNote}
+                    onChange={(event) => setSessionNote(event.target.value)}
+                    placeholder="Ex.: Videoaula 12, parei em 18:43 / PDF de Tributário, página 37 / Livro X, capítulo 3"
+                    rows={4}
+                    disabled={disabledAction}
+                    className="w-full rounded-2xl border border-orange-200 bg-white/90 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 disabled:cursor-not-allowed disabled:opacity-60"
+                  />
+
+                  <p className="mt-2 text-xs text-slate-600">
+                    Ao terminar a sessão, informe exatamente onde você parou.
+                  </p>
+                </div>
+
+                {isReadyToSave && savePromptMessage && (
+                  <div
+                    className={`mt-5 rounded-2xl border px-4 py-3 text-left ${savePromptStyles}`}
+                  >
+                    <p className="text-sm font-semibold">Sessão concluída</p>
+                    <p className="mt-1 text-sm">{savePromptMessage}</p>
+                  </div>
+                )}
+
+                <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+                  <button
+                    type="button"
+                    onClick={handleSaveCompletedSession}
+                    disabled={!isReadyToSave || disabledAction}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    {isSaving ? 'Salvando...' : 'Salvar sessão'}
+                  </button>
+
                   <button
                     onClick={handleStart}
                     disabled={isRunning || disabledAction}
@@ -602,7 +756,9 @@ export default function StudySessionClient({
               </div>
 
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">Histórico recente da disciplina atual</h2>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Histórico recente da disciplina atual
+                </h2>
                 <p className="text-sm text-slate-500">
                   Últimas sessões da disciplina atual do ciclo.
                 </p>
@@ -624,15 +780,27 @@ export default function StudySessionClient({
                       <p className="text-sm font-semibold text-slate-900">
                         {session.discipline}
                       </p>
+
                       <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
-                        <span>{formatDate(session.created_at)}</span>
+                        <span>{formatDate(session.session_date)}</span>
                         <span>•</span>
-                        <span>{formatTime(session.created_at)}</span>
+                        <span>{formatTime(session.session_date)}</span>
                         <span>•</span>
                         <span>{session.study_method}</span>
                         <span>•</span>
                         <span>{formatDuration(session.duration_seconds)}</span>
                       </div>
+
+                      {session.session_note && (
+                        <div className="rounded-2xl border-l-4 border-emerald-500 bg-emerald-50 px-4 py-3 shadow-sm">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700">
+                            Observação da sessão
+                          </p>
+                          <p className="mt-2 text-base font-bold leading-relaxed text-slate-900">
+                            {session.session_note}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     <button

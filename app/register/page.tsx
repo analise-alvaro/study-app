@@ -13,6 +13,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  LogIn,
 } from 'lucide-react'
 
 export default function RegisterPage() {
@@ -31,6 +32,9 @@ export default function RegisterPage() {
 
   async function handleRegister(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+
+    if (loading) return
+
     setLoading(true)
     setMessage('')
     setMessageType('')
@@ -142,6 +146,7 @@ export default function RegisterPage() {
                 onClick={() => router.push('/login')}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#04aa6d] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#059862]"
               >
+                <LogIn className="h-4 w-4" />
                 Ir para o login
               </button>
             </div>
@@ -162,7 +167,8 @@ export default function RegisterPage() {
                       onChange={(event) => setName(event.target.value)}
                       required
                       placeholder="Seu nome"
-                      className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                      disabled={loading}
+                      className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -181,7 +187,8 @@ export default function RegisterPage() {
                       onChange={(event) => setEmail(event.target.value)}
                       required
                       placeholder="seu@email.com"
-                      className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                      disabled={loading}
+                      className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -200,13 +207,15 @@ export default function RegisterPage() {
                       onChange={(event) => setPassword(event.target.value)}
                       required
                       placeholder="••••••••"
-                      className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                      disabled={loading}
+                      className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
                     />
 
                     <button
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
-                      className="text-slate-400 transition hover:text-slate-600"
+                      disabled={loading}
+                      className="text-slate-400 transition hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                     >
                       {showPassword ? (
@@ -232,13 +241,15 @@ export default function RegisterPage() {
                       onChange={(event) => setConfirmPassword(event.target.value)}
                       required
                       placeholder="••••••••"
-                      className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                      disabled={loading}
+                      className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
                     />
 
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword((prev) => !prev)}
-                      className="text-slate-400 transition hover:text-slate-600"
+                      disabled={loading}
+                      className="text-slate-400 transition hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label={
                         showConfirmPassword ? 'Ocultar senha' : 'Mostrar senha'
                       }
@@ -273,8 +284,10 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => router.push('/login')}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  disabled={loading}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
+                  <LogIn className="h-4 w-4" />
                   Já tenho uma conta
                 </button>
               </form>

@@ -4,7 +4,15 @@ import Image from 'next/image'
 import { FormEvent, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
-import { Mail, Lock } from 'lucide-react'
+import {
+  Mail,
+  Lock,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  LogIn,
+  UserPlus,
+} from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -13,11 +21,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [messageType, setMessageType] = useState<'success' | 'error' | ''>('')
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+
+    if (loading) return
+
     setLoading(true)
     setMessage('')
+    setMessageType('')
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -26,12 +39,13 @@ export default function LoginPage() {
 
     if (error) {
       setMessage(error.message)
+      setMessageType('error')
       setLoading(false)
       return
     }
 
-    setMessage('Login realizado com sucesso.')
-    setLoading(false)
+    setMessage('Login realizado com sucesso. Redirecionando...')
+    setMessageType('success')
     router.push('/profile')
   }
 
@@ -74,7 +88,8 @@ export default function LoginPage() {
                   onChange={(event) => setEmail(event.target.value)}
                   required
                   placeholder="seu@email.com"
-                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                  disabled={loading}
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -92,7 +107,8 @@ export default function LoginPage() {
                   onChange={(event) => setPassword(event.target.value)}
                   required
                   placeholder="••••••••"
-                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                  disabled={loading}
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -100,23 +116,46 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-2xl bg-[#04aa6d] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#059862] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#04aa6d] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#059862] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Entrando...
+                </>
+              ) : (
+                <>
+                  <LogIn className="h-4 w-4" />
+                  Entrar
+                </>
+              )}
             </button>
 
             <button
               type="button"
               onClick={() => router.push('/register')}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              disabled={loading}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
+              <UserPlus className="h-4 w-4" />
               Criar nova conta
             </button>
           </form>
 
           {message && (
-            <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-              {message}
+            <div
+              className={`mt-6 flex items-start gap-3 rounded-2xl px-4 py-3 text-sm ${
+                messageType === 'error'
+                  ? 'border border-red-200 bg-red-50 text-red-700'
+                  : 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+              }`}
+            >
+              {messageType === 'error' ? (
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              ) : (
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              )}
+              <span>{message}</span>
             </div>
           )}
         </div>
