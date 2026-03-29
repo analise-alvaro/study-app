@@ -169,7 +169,7 @@ export default function AppShell({ username, totalHours, children }: Props) {
                 <p className="mt-1 text-sm font-bold text-[#04aa6d]">
                   Alvaro Cavalcante
                 </p>
-                <p className="text-xs text-slate-500">analise-alvaro@gmail.com</p>
+                <p className="text-xs text-slate-500">analise.alvaro@gmail.com</p>
               </div>
             </nav>
           </div>

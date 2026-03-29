@@ -1,3 +1,4 @@
+import AppUsageGuide from '@/components/AppUsageGuide'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
 type StudyColorRelation =
@@ -86,6 +87,8 @@ export default async function ProfilePage() {
           Visualize seus dados e a composição atual do seu ciclo de estudos.
         </p>
       </div>
+
+      <AppUsageGuide compact />
 
       <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
         <section className="bg-white/85 p-6 shadow-[0_14px_36px_rgba(15,23,42,0.08)] backdrop-blur-sm">
