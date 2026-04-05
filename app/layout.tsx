@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Bizurado App | Temporizador de Estudos baseado em Ciclos",
   description: "Organize seu ciclo e acompanhe suas sessões de estudo",
+  icons: {
+    icon: "/bizurado-logo.svg",
+  },
 };
 
 export default function RootLayout({

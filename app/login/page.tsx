@@ -5,6 +5,7 @@ import { FormEvent, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import AppUsageGuide from '@/components/AppUsageGuide'
+import UsefulLinksCard from '@/components/UsefulLinksCard'
 import {
   Mail,
   Lock,
@@ -53,9 +54,10 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-emerald-100 px-4 py-8">
       <div className="mx-auto w-full max-w-6xl">
-        <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr] xl:items-center">
+        <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr] xl:items-start">
           <div className="order-2 xl:order-1">
             <AppUsageGuide />
+            <UsefulLinksCard />
           </div>
 
           <div className="order-1 xl:order-2">

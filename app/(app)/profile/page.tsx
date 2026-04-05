@@ -1,5 +1,5 @@
-import AppUsageGuide from '@/components/AppUsageGuide'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import ChangePasswordCard from '@/components/ChangePasswordCard'
 
 type StudyColorRelation =
   | {
@@ -88,8 +88,6 @@ export default async function ProfilePage() {
         </p>
       </div>
 
-      <AppUsageGuide compact />
-
       <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
         <section className="bg-white/85 p-6 shadow-[0_14px_36px_rgba(15,23,42,0.08)] backdrop-blur-sm">
           <h2 className="text-lg font-semibold text-slate-900">
@@ -123,6 +121,8 @@ export default async function ProfilePage() {
                 {cycleList.length}
               </p>
             </div>
+
+            <ChangePasswordCard />
           </div>
         </section>
 

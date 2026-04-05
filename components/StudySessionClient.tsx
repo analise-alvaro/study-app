@@ -50,7 +50,16 @@ type Props = {
 
 type MessageType = 'success' | 'error' | 'info'
 
+type PersistedActiveSession = {
+  endTimestamp: number
+  cycleId: string
+  methodId: string
+  configuredDuration: number
+}
+
 const STUDY_DURATION_STORAGE_KEY = 'study_duration_minutes'
+const TIMER_END_STORAGE_KEY = 'study_timer_end_timestamp'
+const STUDY_ACTIVE_SESSION_STORAGE_KEY = 'study_active_session'
 const DEFAULT_DURATION_MINUTES = 25
 const DEFAULT_DURATION_SECONDS = DEFAULT_DURATION_MINUTES * 60
 
@@ -95,6 +104,7 @@ export default function StudySessionClient({
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const hasCompletedRef = useRef(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const timerEndRef = useRef<number | null>(null)
 
   const selectedCycle = cycles.find((cycle) => String(cycle.id) === selectedCycleId)
   const currentCycle =
@@ -134,6 +144,24 @@ export default function StudySessionClient({
       clearInterval(intervalRef.current)
       intervalRef.current = null
     }
+  }
+
+  function clearPersistedTimer() {
+    localStorage.removeItem(TIMER_END_STORAGE_KEY)
+    localStorage.removeItem(STUDY_ACTIVE_SESSION_STORAGE_KEY)
+    timerEndRef.current = null
+  }
+
+  function persistActiveSession(endTimestamp: number) {
+    const payload: PersistedActiveSession = {
+      endTimestamp,
+      cycleId: selectedCycleId,
+      methodId: selectedMethodId,
+      configuredDuration,
+    }
+
+    localStorage.setItem(TIMER_END_STORAGE_KEY, String(endTimestamp))
+    localStorage.setItem(STUDY_ACTIVE_SESSION_STORAGE_KEY, JSON.stringify(payload))
   }
 
   function setFeedback(text: string, type: MessageType = 'info') {
@@ -189,6 +217,20 @@ export default function StudySessionClient({
     return new Date(dateString).toLocaleDateString('pt-BR')
   }
 
+  function syncRemainingTime() {
+    const timerEnd = timerEndRef.current
+
+    if (!timerEnd) return
+
+    const remaining = Math.max(0, Math.ceil((timerEnd - Date.now()) / 1000))
+    setRemainingSeconds(remaining)
+
+    if (remaining <= 0) {
+      clearTimerInterval()
+      clearPersistedTimer()
+    }
+  }
+
   function handleApplyDuration() {
     if (isRunning || isSaving || isAdvancingCycle || isSettingCurrentCycle) return
 
@@ -202,6 +244,8 @@ export default function StudySessionClient({
     const parsedDurationInSeconds = parsedMinutes * 60
 
     localStorage.setItem(STUDY_DURATION_STORAGE_KEY, String(parsedMinutes))
+    localStorage.removeItem(STUDY_ACTIVE_SESSION_STORAGE_KEY)
+    localStorage.removeItem(TIMER_END_STORAGE_KEY)
 
     setConfiguredDuration(parsedDurationInSeconds)
     setRemainingSeconds(parsedDurationInSeconds)
@@ -233,16 +277,44 @@ export default function StudySessionClient({
 
     setFeedback('', 'info')
     setSavePrompt('', 'info')
+
+    const timerEnd = Date.now() + remainingSeconds * 1000
+    timerEndRef.current = timerEnd
+    persistActiveSession(timerEnd)
+
+    if (audioRef.current) {
+      audioRef.current
+        .play()
+        .then(() => {
+          if (audioRef.current) {
+            audioRef.current.pause()
+            audioRef.current.currentTime = 0
+          }
+        })
+        .catch(() => {
+          // ignora erro de desbloqueio de áudio
+        })
+    }
+
+    syncRemainingTime()
     setIsRunning(true)
   }
 
   function handlePause() {
+    if (timerEndRef.current) {
+      const remaining = Math.max(0, Math.ceil((timerEndRef.current - Date.now()) / 1000))
+      setRemainingSeconds(remaining)
+    }
+
+    clearTimerInterval()
+    clearPersistedTimer()
     setIsRunning(false)
   }
 
   function handleReset() {
     setIsRunning(false)
     clearTimerInterval()
+    clearPersistedTimer()
     hasCompletedRef.current = false
     setIsReadyToSave(false)
     setSessionNote('')
@@ -369,6 +441,7 @@ export default function StudySessionClient({
       return
     }
 
+    clearPersistedTimer()
     setIsSaving(false)
     setIsReadyToSave(false)
     setSessionNote('')
@@ -381,12 +454,54 @@ export default function StudySessionClient({
     const savedDuration = localStorage.getItem(STUDY_DURATION_STORAGE_KEY)
     const savedMinutes = Number(savedDuration)
 
-    if (savedDuration && Number.isFinite(savedMinutes) && savedMinutes > 0) {
-      const savedDurationInSeconds = savedMinutes * 60
+    let hydratedConfiguredDuration = DEFAULT_DURATION_SECONDS
 
+    if (savedDuration && Number.isFinite(savedMinutes) && savedMinutes > 0) {
+      hydratedConfiguredDuration = savedMinutes * 60
       setDurationInput(String(savedMinutes))
-      setConfiguredDuration(savedDurationInSeconds)
-      setRemainingSeconds(savedDurationInSeconds)
+      setConfiguredDuration(hydratedConfiguredDuration)
+      setRemainingSeconds(hydratedConfiguredDuration)
+    }
+
+    const savedActiveSession = localStorage.getItem(STUDY_ACTIVE_SESSION_STORAGE_KEY)
+
+    if (savedActiveSession) {
+      try {
+        const parsedSession = JSON.parse(savedActiveSession) as PersistedActiveSession
+
+        if (
+          Number.isFinite(parsedSession.endTimestamp) &&
+          parsedSession.endTimestamp > Date.now()
+        ) {
+          timerEndRef.current = parsedSession.endTimestamp
+          setSelectedCycleId(parsedSession.cycleId)
+          setSelectedMethodId(parsedSession.methodId)
+          setConfiguredDuration(parsedSession.configuredDuration)
+          setDurationInput(String(Math.floor(parsedSession.configuredDuration / 60)))
+          setRemainingSeconds(
+            Math.max(0, Math.ceil((parsedSession.endTimestamp - Date.now()) / 1000))
+          )
+          setIsRunning(true)
+        } else {
+          clearPersistedTimer()
+          setRemainingSeconds(hydratedConfiguredDuration)
+        }
+      } catch {
+        clearPersistedTimer()
+        setRemainingSeconds(hydratedConfiguredDuration)
+      }
+    } else {
+      const savedTimerEnd = localStorage.getItem(TIMER_END_STORAGE_KEY)
+      const parsedTimerEnd = Number(savedTimerEnd)
+
+      if (savedTimerEnd && Number.isFinite(parsedTimerEnd) && parsedTimerEnd > Date.now()) {
+        timerEndRef.current = parsedTimerEnd
+        setRemainingSeconds(Math.max(0, Math.ceil((parsedTimerEnd - Date.now()) / 1000)))
+        setIsRunning(true)
+      } else if (savedTimerEnd) {
+        localStorage.removeItem(TIMER_END_STORAGE_KEY)
+        setRemainingSeconds(hydratedConfiguredDuration)
+      }
     }
 
     setHasHydratedDuration(true)
@@ -402,19 +517,30 @@ export default function StudySessionClient({
       return
     }
 
-    intervalRef.current = setInterval(() => {
-      setRemainingSeconds((prev) => {
-        if (prev <= 1) {
-          clearTimerInterval()
-          return 0
-        }
+    syncRemainingTime()
 
-        return prev - 1
-      })
+    intervalRef.current = setInterval(() => {
+      syncRemainingTime()
     }, 1000)
 
     return () => clearTimerInterval()
   }, [isRunning])
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && timerEndRef.current) {
+        syncRemainingTime()
+      }
+    }
+
+    window.addEventListener('focus', handleVisibilityChange)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('focus', handleVisibilityChange)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 
   useEffect(() => {
     async function prepareCompletedSession() {
@@ -423,6 +549,7 @@ export default function StudySessionClient({
 
       hasCompletedRef.current = true
       setIsRunning(false)
+      clearPersistedTimer()
       setIsReadyToSave(true)
 
       try {
@@ -442,6 +569,26 @@ export default function StudySessionClient({
 
     prepareCompletedSession()
   }, [remainingSeconds])
+
+  useEffect(() => {
+  const defaultTitle = 'Bizurado App'
+
+  if (cycles.length === 0) {
+    document.title = defaultTitle
+    return
+  }
+
+  if (isRunning || isReadyToSave) {
+    document.title = `${formattedTime} • Bizurado App`
+    return
+  }
+
+  document.title = defaultTitle
+
+  return () => {
+    document.title = defaultTitle
+  }
+}, [formattedTime, isRunning, isReadyToSave, cycles.length])
 
   const disabledAction = isSaving || isAdvancingCycle || isSettingCurrentCycle
 

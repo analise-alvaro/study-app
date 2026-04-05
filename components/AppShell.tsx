@@ -1,5 +1,6 @@
 'use client'
 
+import { BookOpen } from 'lucide-react'
 import { ReactNode, useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
@@ -41,12 +42,13 @@ export default function AppShell({ username, totalHours, children }: Props) {
     }
   }
 
-  const links = [
-    { href: '/profile', label: 'Perfil', icon: User },
-    { href: '/study-session', label: 'Sessão de estudo', icon: Clock3 },
-    { href: '/study-cycle', label: 'Ciclo de estudo', icon: FolderKanban },
-    { href: '/statistics', label: 'Estatísticas', icon: BarChart3 },
-  ]
+const links = [
+  { href: '/profile', label: 'Perfil', icon: User },
+  { href: '/study-session', label: 'Sessão de estudo', icon: Clock3 },
+  { href: '/study-cycle', label: 'Ciclo de estudo', icon: FolderKanban },
+  { href: '/statistics', label: 'Estatísticas', icon: BarChart3 },
+  { href: '/user-guide', label: 'Guia do Usuário', icon: BookOpen },
+]
 
   const isPageNavigating = pendingHref !== null
 

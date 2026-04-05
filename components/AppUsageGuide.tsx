@@ -7,7 +7,9 @@ type Props = {
 export default function AppUsageGuide({ compact = false }: Props) {
   return (
     <section
-      className={`rounded-3xl border border-emerald-200/60 bg-white/85 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-sm ${
+      className={` shadow-[0_18px_45px_rgba(15,23,42,0.08)]${
+
+      //className={`rounded-3xl border border-emerald-200/60 bg-white/85 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-sm ${
         compact ? 'p-5' : 'p-6 md:p-8'
       }`}
     >
