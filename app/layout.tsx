@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   icons: {
     icon: "/bizurado-logo.svg",
   },
+  verification: {
+    google: 'izh35vLD1HSEXpt6oFLOFvAqQyON5aG-dAXlk3bGYGQ',
+  },
 };
 
 export default function RootLayout({
